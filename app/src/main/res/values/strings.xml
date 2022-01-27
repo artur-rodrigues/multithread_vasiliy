@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Android Multithreading</string>
+    <string name="count_iterations">Count iterations</string>
 </resources>

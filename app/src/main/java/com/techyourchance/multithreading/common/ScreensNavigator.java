@@ -1,6 +1,5 @@
 package com.techyourchance.multithreading.common;
 
-import com.techyourchance.fragmenthelper.FragmentHelper;
 import com.techyourchance.multithreading.demonstrations.atomicity.AtomicityDemonstrationFragment;
 import com.techyourchance.multithreading.demonstrations.customhandler.CustomHandlerDemonstrationFragment;
 import com.techyourchance.multithreading.demonstrations.designasynctask.DesignWithAsyncTaskDemonstrationFragment;

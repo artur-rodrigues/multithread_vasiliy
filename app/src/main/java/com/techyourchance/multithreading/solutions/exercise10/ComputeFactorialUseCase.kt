@@ -1,19 +1,16 @@
 package com.techyourchance.multithreading.solutions.exercise10
 
-import java.math.BigInteger
-
-import androidx.annotation.WorkerThread
 import kotlinx.coroutines.*
-import java.util.concurrent.TimeUnit
+import java.math.BigInteger
 
 class ComputeFactorialUseCase {
 
-    public sealed class Result {
+    sealed class Result {
         class Success(val result: BigInteger) : Result()
         object Timeout : Result()
     }
 
-    suspend fun computeFactorial(argument: Int, timeout: Int) : Result {
+    suspend fun computeFactorial(argument: Int, timeout: Int): Result {
 
         return withContext(Dispatchers.IO) {
 
@@ -28,14 +25,14 @@ class ComputeFactorialUseCase {
 
                     Result.Success(result)
                 }
-            } catch (e : TimeoutCancellationException) {
+            } catch (e: TimeoutCancellationException) {
                 Result.Timeout
             }
 
         }
     }
 
-    private fun getComputationRanges(factorialArgument: Int) : Array<ComputationRange> {
+    private fun getComputationRanges(factorialArgument: Int): Array<ComputationRange> {
         val numberOfThreads = getNumberOfThreads(factorialArgument)
 
         val threadsComputationRanges = Array(numberOfThreads) { ComputationRange(0, 0) }
@@ -46,8 +43,8 @@ class ComputeFactorialUseCase {
 
         for (i in numberOfThreads - 1 downTo 0) {
             threadsComputationRanges[i] = ComputationRange(
-                    nextComputationRangeEnd - computationRangeSize + 1,
-                    nextComputationRangeEnd
+                nextComputationRangeEnd - computationRangeSize + 1,
+                nextComputationRangeEnd
             )
             nextComputationRangeEnd = threadsComputationRanges[i].start - 1
         }
@@ -65,39 +62,42 @@ class ComputeFactorialUseCase {
             Runtime.getRuntime().availableProcessors()
     }
 
-    private suspend fun computePartialProducts(computationRanges: Array<ComputationRange>) : List<BigInteger> = coroutineScope {
-        return@coroutineScope computationRanges.map {
-            computeProductForRangeAsync(it)
-        }.map {
-            it.await()
-        }
-    }
-
-    private fun CoroutineScope.computeProductForRangeAsync(computationRange: ComputationRange) : Deferred<BigInteger> = async(Dispatchers.IO) {
-        val rangeStart = computationRange.start
-        val rangeEnd = computationRange.end
-
-        var product = BigInteger("1")
-        for (num in rangeStart..rangeEnd) {
-            if (!isActive) {
-                break
+    private suspend fun computePartialProducts(computationRanges: Array<ComputationRange>): List<BigInteger> =
+        coroutineScope {
+            return@coroutineScope withContext(Dispatchers.IO) {
+                return@withContext computationRanges.map {
+                    computeProductForRangeAsync(it)
+                }.awaitAll()
             }
-            product = product.multiply(BigInteger(num.toString()))
         }
 
-        return@async product
-    }
+    private fun CoroutineScope.computeProductForRangeAsync(computationRange: ComputationRange): Deferred<BigInteger> =
+        async(Dispatchers.IO) {
+            val rangeStart = computationRange.start
+            val rangeEnd = computationRange.end
 
-    private suspend fun computeFinalResult(partialProducts: List<BigInteger>): BigInteger = withContext(Dispatchers.IO) {
-        var result = BigInteger("1")
-        for (partialProduct in partialProducts) {
-            if (!isActive) {
-                break
+            var product = BigInteger("1")
+            for (num in rangeStart..rangeEnd) {
+                if (!isActive) {
+                    break
+                }
+                product = product.multiply(BigInteger(num.toString()))
             }
-            result = result.multiply(partialProduct)
+
+            return@async product
         }
-        return@withContext result
-    }
+
+    private suspend fun computeFinalResult(partialProducts: List<BigInteger>): BigInteger =
+        withContext(Dispatchers.IO) {
+            var result = BigInteger("1")
+            for (partialProduct in partialProducts) {
+                if (!isActive) {
+                    break
+                }
+                result = result.multiply(partialProduct)
+            }
+            return@withContext result
+        }
 
     private data class ComputationRange(val start: Long, val end: Long)
 }

@@ -1,8 +1,8 @@
 package com.techyourchance.multithreading.demonstrations.bestjavaimplementation;
 
+import com.techyourchance.multithreading.common.BackgroundThreadPoster;
 import com.techyourchance.multithreading.common.BaseObservable;
-import com.techyourchance.threadposter.BackgroundThreadPoster;
-import com.techyourchance.threadposter.UiThreadPoster;
+import com.techyourchance.multithreading.common.UiThreadPoster;
 
 import java.math.BigInteger;
 

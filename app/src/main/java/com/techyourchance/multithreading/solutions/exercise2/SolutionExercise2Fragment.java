@@ -52,22 +52,19 @@ public class SolutionExercise2Fragment extends BaseFragment {
 
         mCountAbort.set(false);
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                int screenTimeSeconds = 0;
-                while (true) {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        return;
-                    }
-                    if (mCountAbort.get()) {
-                        return;
-                    }
-                    screenTimeSeconds++;
-                    Log.d("Exercise 2", "screen time: " + screenTimeSeconds + "s");
+        new Thread(() -> {
+            int screenTimeSeconds = 0;
+            while (true) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    return;
                 }
+                if (mCountAbort.get()) {
+                    return;
+                }
+                screenTimeSeconds++;
+                Log.d("Exercise 2", "screen time: " + screenTimeSeconds + "s");
             }
         }).start();
     }

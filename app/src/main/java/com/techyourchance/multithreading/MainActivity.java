@@ -10,7 +10,6 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import com.techyourchance.fragmenthelper.FragmentContainerWrapper;
 import com.techyourchance.multithreading.common.ToolbarManipulator;
 import com.techyourchance.multithreading.common.ScreensNavigator;
 import com.techyourchance.multithreading.common.dependencyinjection.PresentationCompositionRoot;

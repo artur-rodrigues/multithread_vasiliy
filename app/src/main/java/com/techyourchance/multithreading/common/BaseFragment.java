@@ -3,14 +3,13 @@ package com.techyourchance.multithreading.common;
 import android.os.Bundle;
 import android.view.View;
 
-import com.techyourchance.fragmenthelper.HierarchicalFragment;
-import com.techyourchance.multithreading.MyApplication;
-import com.techyourchance.multithreading.common.dependencyinjection.PresentationCompositionRoot;
-import com.techyourchance.multithreading.home.HomeFragment;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+
+import com.techyourchance.multithreading.MyApplication;
+import com.techyourchance.multithreading.common.dependencyinjection.PresentationCompositionRoot;
+import com.techyourchance.multithreading.home.HomeFragment;
 
 public abstract class BaseFragment extends Fragment implements HierarchicalFragment {
 
@@ -20,7 +19,7 @@ public abstract class BaseFragment extends Fragment implements HierarchicalFragm
         if (mPresentationCompositionRoot == null) {
             mPresentationCompositionRoot = new PresentationCompositionRoot(
                     requireActivity(),
-                    ((MyApplication)requireActivity().getApplication()).getApplicationCompositionRoot()
+                    ((MyApplication) requireActivity().getApplication()).getApplicationCompositionRoot()
             );
         }
         return mPresentationCompositionRoot;
