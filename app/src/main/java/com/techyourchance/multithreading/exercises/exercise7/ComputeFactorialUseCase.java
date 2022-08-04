@@ -6,6 +6,7 @@ import android.os.Looper;
 import com.techyourchance.multithreading.common.BaseObservable;
 
 import java.math.BigInteger;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import androidx.annotation.WorkerThread;
 
@@ -19,7 +20,8 @@ public class ComputeFactorialUseCase extends BaseObservable<ComputeFactorialUseC
 
     private final Object LOCK = new Object();
 
-    private final Handler mUiHandler = new Handler(Looper.getMainLooper());
+    private final Handler handler;
+    private final ThreadPoolExecutor executor;
 
     private int mNumberOfThreads;
     private ComputationRange[] mThreadsComputationRanges;
@@ -29,6 +31,11 @@ public class ComputeFactorialUseCase extends BaseObservable<ComputeFactorialUseC
     private long mComputationTimeoutTime;
 
     private boolean mAbortComputation;
+
+    public ComputeFactorialUseCase(Handler handler, ThreadPoolExecutor executor) {
+        this.handler = handler;
+        this.executor = executor;
+    }
 
     @Override
     protected void onLastListenerUnregistered() {
@@ -40,12 +47,12 @@ public class ComputeFactorialUseCase extends BaseObservable<ComputeFactorialUseC
     }
 
     public void computeFactorialAndNotify(final int argument, final int timeout) {
-        new Thread(() -> {
+        executor.execute(() -> {
             initComputationParams(argument, timeout);
             startComputation();
             waitForThreadsResultsOrTimeoutOrAbort();
             processComputationResults();
-        }).start();
+        });
     }
 
     private void initComputationParams(int factorialArgument, int timeout) {
@@ -88,7 +95,7 @@ public class ComputeFactorialUseCase extends BaseObservable<ComputeFactorialUseC
 
             final int threadIndex = i;
 
-            new Thread(() -> {
+            executor.execute(() -> {
                 long rangeStart = mThreadsComputationRanges[threadIndex].start;
                 long rangeEnd = mThreadsComputationRanges[threadIndex].end;
                 BigInteger product = new BigInteger("1");
@@ -105,7 +112,7 @@ public class ComputeFactorialUseCase extends BaseObservable<ComputeFactorialUseC
                     LOCK.notifyAll();
                 }
 
-            }).start();
+            });
         }
     }
 
@@ -161,7 +168,7 @@ public class ComputeFactorialUseCase extends BaseObservable<ComputeFactorialUseC
     }
 
     private void notifySuccess(final BigInteger result) {
-        mUiHandler.post(() -> {
+        handler.post(() -> {
             for (Listener listener : getListeners()) {
                 listener.onFactorialComputed(result);
             }
@@ -169,7 +176,7 @@ public class ComputeFactorialUseCase extends BaseObservable<ComputeFactorialUseC
     }
 
     private void notifyAborted() {
-        mUiHandler.post(() -> {
+        handler.post(() -> {
             for (Listener listener : getListeners()) {
                 listener.onFactorialComputationAborted();
             }
@@ -177,7 +184,7 @@ public class ComputeFactorialUseCase extends BaseObservable<ComputeFactorialUseC
     }
 
     private void notifyTimeout() {
-        mUiHandler.post(() -> {
+        handler.post(() -> {
             for (Listener listener : getListeners()) {
                 listener.onFactorialComputationTimedOut();
             }

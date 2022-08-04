@@ -30,26 +30,26 @@ public class Exercise6Fragment extends BaseFragment {
         return new Exercise6Fragment();
     }
 
-    private static int MAX_TIMEOUT_MS = DefaultConfiguration.DEFAULT_FACTORIAL_TIMEOUT_MS;
-
-    private final Object LOCK = new Object();
-
-    private final Handler mUiHandler = new Handler(Looper.getMainLooper());
-
     // UI thread
     private EditText mEdtArgument;
     private EditText mEdtTimeout;
     private Button mBtnStartWork;
     private TextView mTxtResult;
 
-    private int mNumberOfThreads; // safe
-    private ComputationRange[] mThreadsComputationRanges; // safe
-    private volatile BigInteger[] mThreadsComputationResults; // safe
-    private int mNumOfFinishedThreads = 0; // safe
+    private Exercise6UseCase useCase;
+    private ComputationResult result;
 
-    private long mComputationTimeoutTime; // safe
-
-        private volatile boolean mAbortComputation; // safe
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        useCase = new Exercise6UseCase();
+        result = result -> {
+            if (!Exercise6Fragment.this.isStateSaved()) {
+                mTxtResult.setText(result);
+                mBtnStartWork.setEnabled(true);
+            }
+        };
+    }
 
     @Nullable
     @Override
@@ -74,18 +74,25 @@ public class Exercise6Fragment extends BaseFragment {
                     (InputMethodManager) requireContext().getSystemService(Activity.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(mBtnStartWork.getWindowToken(), 0);
 
-            int argument = Integer.valueOf(mEdtArgument.getText().toString());
+            int argument = Integer.parseInt(mEdtArgument.getText().toString());
 
-            computeFactorial(argument, getTimeout());
+            useCase.computeFactorial(argument, mEdtTimeout.getText().toString());
         });
 
         return view;
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        useCase.registerListener(result);
+    }
+
+    @Override
     public void onStop() {
         super.onStop();
-        mAbortComputation = true;
+        useCase.setAbortComputation(true);
+        useCase.unregisterListener(result);
     }
 
     @Override
@@ -93,157 +100,5 @@ public class Exercise6Fragment extends BaseFragment {
         return "Exercise 6";
     }
 
-    private int getTimeout() {
-        int timeout;
-        if (mEdtTimeout.getText().toString().isEmpty()) {
-            timeout = MAX_TIMEOUT_MS;
-        } else {
-            timeout = Integer.valueOf(mEdtTimeout.getText().toString());
-            if (timeout > MAX_TIMEOUT_MS) {
-                timeout = MAX_TIMEOUT_MS;
-            }
-        }
-        return timeout;
-    }
 
-    private void computeFactorial(final int factorialArgument, final int timeout) {
-        new Thread(() -> {
-            initComputationParams(factorialArgument, timeout);
-            startComputation();
-            waitForThreadsResultsOrTimeoutOrAbort();
-            processComputationResults();
-        }).start();
-    }
-
-    private void initComputationParams(int factorialArgument, int timeout) {
-        mNumberOfThreads = factorialArgument < 20
-                ? 1 : Runtime.getRuntime().availableProcessors();
-
-        synchronized (LOCK) {
-            mNumOfFinishedThreads = 0;
-        }
-
-        mAbortComputation = false;
-
-        mThreadsComputationResults = new BigInteger[mNumberOfThreads];
-
-        mThreadsComputationRanges = new ComputationRange[mNumberOfThreads];
-
-        initThreadsComputationRanges(factorialArgument);
-
-        mComputationTimeoutTime = System.currentTimeMillis() + timeout;
-    }
-
-    private void initThreadsComputationRanges(int factorialArgument) {
-        int computationRangeSize = factorialArgument / mNumberOfThreads;
-
-        long nextComputationRangeEnd = factorialArgument;
-        for (int i = mNumberOfThreads - 1; i >= 0; i--) {
-            mThreadsComputationRanges[i] = new ComputationRange(
-                    nextComputationRangeEnd - computationRangeSize + 1,
-                    nextComputationRangeEnd
-            );
-            nextComputationRangeEnd = mThreadsComputationRanges[i].start - 1;
-        }
-
-        // add potentially "remaining" values to first thread's range
-        mThreadsComputationRanges[0].start = 1;
-    }
-
-    @WorkerThread
-    private void startComputation() {
-        for (int i = 0; i < mNumberOfThreads; i++) {
-
-            final int threadIndex = i;
-
-            new Thread(() -> {
-                long rangeStart = mThreadsComputationRanges[threadIndex].start;
-                long rangeEnd = mThreadsComputationRanges[threadIndex].end;
-                BigInteger product = new BigInteger("1");
-                for (long num = rangeStart; num <= rangeEnd; num++) {
-                    if (isTimedOut()) {
-                        break;
-                    }
-                    product = product.multiply(new BigInteger(String.valueOf(num)));
-                }
-                mThreadsComputationResults[threadIndex] = product;
-
-                synchronized (LOCK) {
-                    mNumOfFinishedThreads++;
-                    LOCK.notifyAll();
-                }
-
-            }).start();
-
-        }
-    }
-
-    @WorkerThread
-    private void waitForThreadsResultsOrTimeoutOrAbort() {
-        synchronized (LOCK) {
-            while (mNumOfFinishedThreads != mNumberOfThreads && !mAbortComputation && !isTimedOut()) {
-                try {
-                    LOCK.wait(getRemainingMillisToTimeout());
-                } catch (InterruptedException e) {
-                    return;
-                }
-            }
-        }
-    }
-
-    private long getRemainingMillisToTimeout() {
-        return mComputationTimeoutTime - System.currentTimeMillis();
-    }
-
-    @WorkerThread
-    private void processComputationResults() {
-        String resultString;
-
-        if (mAbortComputation) {
-            resultString = "Computation aborted";
-        }
-        else {
-            resultString = computeFinalResult().toString();
-        }
-
-        // need to check for timeout after computation of the final result
-        if (isTimedOut()) {
-            resultString = "Computation timed out";
-        }
-
-        final String finalResultString = resultString;
-
-        mUiHandler.post(() -> {
-            if (!Exercise6Fragment.this.isStateSaved()) {
-                mTxtResult.setText(finalResultString);
-                mBtnStartWork.setEnabled(true);
-            }
-        });
-    }
-
-    @WorkerThread
-    private BigInteger computeFinalResult() {
-        BigInteger result = new BigInteger("1");
-        for (int i = 0; i < mNumberOfThreads; i++) {
-            if (isTimedOut()) {
-                break;
-            }
-            result = result.multiply(mThreadsComputationResults[i]);
-        }
-        return result;
-    }
-
-    private boolean isTimedOut() {
-        return System.currentTimeMillis() >= mComputationTimeoutTime;
-    }
-
-    private static class ComputationRange {
-        private long start;
-        private long end;
-
-        public ComputationRange(long start, long end) {
-            this.start = start;
-            this.end = end;
-        }
-    }
 }

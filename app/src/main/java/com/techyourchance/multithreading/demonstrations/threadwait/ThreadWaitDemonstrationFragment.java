@@ -30,7 +30,7 @@ public class ThreadWaitDemonstrationFragment extends BaseFragment {
         return new ThreadWaitDemonstrationFragment();
     }
 
-    private static int MAX_TIMEOUT_MS = DefaultConfiguration.DEFAULT_FACTORIAL_TIMEOUT_MS;
+    private static final int MAX_TIMEOUT_MS = DefaultConfiguration.DEFAULT_FACTORIAL_TIMEOUT_MS;
 
     private final Object LOCK = new Object();
 

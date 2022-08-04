@@ -17,6 +17,7 @@ import com.techyourchance.multithreading.R;
 import com.techyourchance.multithreading.common.BaseFragment;
 
 import java.math.BigInteger;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -29,9 +30,9 @@ public class Exercise4Fragment extends BaseFragment {
         return new Exercise4Fragment();
     }
 
-    private static int MAX_TIMEOUT_MS = DefaultConfiguration.DEFAULT_FACTORIAL_TIMEOUT_MS;
+    private final int MAX_TIMEOUT_MS = DefaultConfiguration.DEFAULT_FACTORIAL_TIMEOUT_MS;
 
-    private Handler mUiHandler = new Handler(Looper.getMainLooper());
+    private final Handler mUiHandler = new Handler(Looper.getMainLooper());
 
     private EditText mEdtArgument;
     private EditText mEdtTimeout;
@@ -40,12 +41,12 @@ public class Exercise4Fragment extends BaseFragment {
 
     private int mNumberOfThreads;
     private ComputationRange[] mThreadsComputationRanges;
-    private BigInteger[] mThreadsComputationResults;
-    private int mNumOfFinishedThreads;
+    private volatile BigInteger[] mThreadsComputationResults;
+    private final AtomicInteger mNumOfFinishedThreads = new AtomicInteger(0);
 
     private long mComputationTimeoutTime;
 
-    private boolean mAbortComputation;
+    private volatile boolean mAbortComputation;
 
     @Nullable
     @Override
@@ -57,25 +58,22 @@ public class Exercise4Fragment extends BaseFragment {
         mBtnStartWork = view.findViewById(R.id.btn_compute);
         mTxtResult = view.findViewById(R.id.txt_result);
 
-        mBtnStartWork.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mEdtArgument.getText().toString().isEmpty()) {
-                    return;
-                }
-
-                mTxtResult.setText("");
-                mBtnStartWork.setEnabled(false);
-
-
-                InputMethodManager imm =
-                        (InputMethodManager) requireContext().getSystemService(Activity.INPUT_METHOD_SERVICE);
-                imm.hideSoftInputFromWindow(mBtnStartWork.getWindowToken(), 0);
-
-                int argument = Integer.valueOf(mEdtArgument.getText().toString());
-
-                computeFactorial(argument, getTimeout());
+        mBtnStartWork.setOnClickListener(v -> {
+            if (mEdtArgument.getText().toString().isEmpty()) {
+                return;
             }
+
+            mTxtResult.setText("");
+            mBtnStartWork.setEnabled(false);
+
+
+            InputMethodManager imm =
+                    (InputMethodManager) requireContext().getSystemService(Activity.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(mBtnStartWork.getWindowToken(), 0);
+
+            int argument = Integer.parseInt(mEdtArgument.getText().toString());
+
+            computeFactorial(argument, getTimeout());
         });
 
         return view;
@@ -97,7 +95,7 @@ public class Exercise4Fragment extends BaseFragment {
         if (mEdtTimeout.getText().toString().isEmpty()) {
             timeout = MAX_TIMEOUT_MS;
         } else {
-            timeout = Integer.valueOf(mEdtTimeout.getText().toString());
+            timeout = Integer.parseInt(mEdtTimeout.getText().toString());
             if (timeout > MAX_TIMEOUT_MS) {
                 timeout = MAX_TIMEOUT_MS;
             }
@@ -106,14 +104,11 @@ public class Exercise4Fragment extends BaseFragment {
     }
 
     private void computeFactorial(final int factorialArgument, final int timeout) {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                initComputationParams(factorialArgument, timeout);
-                startComputation();
-                waitForThreadsResultsOrTimeoutOrAbort();
-                processComputationResults();
-            }
+        new Thread(() -> {
+            initComputationParams(factorialArgument, timeout);
+            startComputation();
+            waitForThreadsResultsOrTimeoutOrAbort();
+            processComputationResults();
         }).start();
     }
 
@@ -121,7 +116,7 @@ public class Exercise4Fragment extends BaseFragment {
         mNumberOfThreads = factorialArgument < 20
                 ? 1 : Runtime.getRuntime().availableProcessors();
 
-        mNumOfFinishedThreads = 0;
+        mNumOfFinishedThreads.set(0);
 
         mAbortComputation = false;
 
@@ -156,21 +151,18 @@ public class Exercise4Fragment extends BaseFragment {
 
             final int threadIndex = i;
 
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    long rangeStart = mThreadsComputationRanges[threadIndex].start;
-                    long rangeEnd = mThreadsComputationRanges[threadIndex].end;
-                    BigInteger product = new BigInteger("1");
-                    for (long num = rangeStart; num <= rangeEnd; num++) {
-                        if (isTimedOut()) {
-                            break;
-                        }
-                        product = product.multiply(new BigInteger(String.valueOf(num)));
+            new Thread(() -> {
+                long rangeStart = mThreadsComputationRanges[threadIndex].start;
+                long rangeEnd = mThreadsComputationRanges[threadIndex].end;
+                BigInteger product = new BigInteger("1");
+                for (long num = rangeStart; num <= rangeEnd; num++) {
+                    if (isTimedOut()) {
+                        break;
                     }
-                    mThreadsComputationResults[threadIndex] = product;
-                    mNumOfFinishedThreads++;
+                    product = product.multiply(new BigInteger(String.valueOf(num)));
                 }
+                mThreadsComputationResults[threadIndex] = product;
+                mNumOfFinishedThreads.incrementAndGet();
             }).start();
 
         }
@@ -179,7 +171,7 @@ public class Exercise4Fragment extends BaseFragment {
     @WorkerThread
     private void waitForThreadsResultsOrTimeoutOrAbort() {
         while (true) {
-            if (mNumOfFinishedThreads == mNumberOfThreads) {
+            if (mNumOfFinishedThreads.get() == mNumberOfThreads) {
                 break;
             } else if(mAbortComputation) {
                 break;
@@ -213,13 +205,10 @@ public class Exercise4Fragment extends BaseFragment {
 
         final String finalResultString = resultString;
 
-        mUiHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (!Exercise4Fragment.this.isStateSaved()) {
-                    mTxtResult.setText(finalResultString);
-                    mBtnStartWork.setEnabled(true);
-                }
+        mUiHandler.post(() -> {
+            if (!Exercise4Fragment.this.isStateSaved()) {
+                mTxtResult.setText(finalResultString);
+                mBtnStartWork.setEnabled(true);
             }
         });
     }
@@ -241,8 +230,8 @@ public class Exercise4Fragment extends BaseFragment {
     }
 
     private static class ComputationRange {
-        private long start;
-        private long end;
+        private volatile long start;
+        private final long end;
 
         public ComputationRange(long start, long end) {
             this.start = start;

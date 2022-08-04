@@ -9,6 +9,8 @@ import com.techyourchance.multithreading.FragmentContainerWrapper;
 import com.techyourchance.multithreading.common.FragmentHelper;
 import com.techyourchance.multithreading.common.ScreensNavigator;
 import com.techyourchance.multithreading.common.ToolbarManipulator;
+import com.techyourchance.threadposter.BackgroundThreadPoster;
+import com.techyourchance.threadposter.UiThreadPoster;
 
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -44,5 +46,13 @@ public class PresentationCompositionRoot {
 
     public ThreadPoolExecutor getThreadPool() {
         return mApplicationCompositionRoot.getThreadPool();
+    }
+
+    public UiThreadPoster getUiThreadPoster() {
+        return new UiThreadPoster();
+    }
+
+    public BackgroundThreadPoster getBackgroundThreadPoster() {
+        return mApplicationCompositionRoot.getThreadPoster();
     }
 }

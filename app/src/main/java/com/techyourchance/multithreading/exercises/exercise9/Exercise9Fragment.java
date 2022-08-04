@@ -10,17 +10,22 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
 import com.techyourchance.multithreading.DefaultConfiguration;
 import com.techyourchance.multithreading.R;
 import com.techyourchance.multithreading.common.BaseFragment;
 
 import java.math.BigInteger;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 
-public class Exercise9Fragment extends BaseFragment implements ComputeFactorialUseCase.Listener {
+public class Exercise9Fragment extends BaseFragment {
 
     public static Fragment newInstance() {
         return new Exercise9Fragment();
@@ -34,6 +39,8 @@ public class Exercise9Fragment extends BaseFragment implements ComputeFactorialU
     private TextView mTxtResult;
 
     private ComputeFactorialUseCase mComputeFactorialUseCase;
+
+    private Disposable disposable;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -64,24 +71,23 @@ public class Exercise9Fragment extends BaseFragment implements ComputeFactorialU
                     (InputMethodManager) requireContext().getSystemService(Activity.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(mBtnStartWork.getWindowToken(), 0);
 
-            int argument = Integer.valueOf(mEdtArgument.getText().toString());
+            int argument = Integer.parseInt(mEdtArgument.getText().toString());
 
-            mComputeFactorialUseCase.computeFactorialAndNotify(argument, getTimeout());
+            disposable = mComputeFactorialUseCase.computeFactorialAndNotify(argument, getTimeout())
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(this::onFactorialComputed, this::onFactorialError);
         });
 
         return view;
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
-        mComputeFactorialUseCase.registerListener(this);
-    }
-
-    @Override
     public void onStop() {
         super.onStop();
-        mComputeFactorialUseCase.unregisterListener(this);
+        if(disposable != null) {
+            disposable.dispose();
+        }
 
     }
 
@@ -103,21 +109,13 @@ public class Exercise9Fragment extends BaseFragment implements ComputeFactorialU
         return timeout;
     }
 
-    @Override
     public void onFactorialComputed(BigInteger result) {
         mTxtResult.setText(result.toString());
         mBtnStartWork.setEnabled(true);
     }
 
-    @Override
-    public void onFactorialComputationTimedOut() {
-        mTxtResult.setText("Computation timed out");
-        mBtnStartWork.setEnabled(true);
-    }
-
-    @Override
-    public void onFactorialComputationAborted() {
-        mTxtResult.setText("Computation aborted");
+    public void onFactorialError(Throwable exception) {
+        mTxtResult.setText(exception.getMessage());
         mBtnStartWork.setEnabled(true);
     }
 }

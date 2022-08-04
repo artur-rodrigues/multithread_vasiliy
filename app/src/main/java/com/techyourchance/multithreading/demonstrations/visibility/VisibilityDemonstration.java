@@ -18,15 +18,12 @@ public class VisibilityDemonstration {
         @Override
         public void run() {
             int localValue = -1;
-            while (true) {
+            do {
                 if (localValue != sCount) {
                     System.out.println("Consumer: detected count change " + sCount);
                     localValue = sCount;
                 }
-                if (sCount >= 5) {
-                    break;
-                }
-            }
+            } while (sCount < 5);
             System.out.println("Consumer: terminating");
         }
     }

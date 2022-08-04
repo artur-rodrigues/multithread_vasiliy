@@ -38,7 +38,7 @@ public class Exercise7Fragment extends BaseFragment implements ComputeFactorialU
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mComputeFactorialUseCase = new ComputeFactorialUseCase();
+        mComputeFactorialUseCase = new ComputeFactorialUseCase(getCompositionRoot().getUiHandler(), getCompositionRoot().getThreadPool());
     }
 
     @Nullable

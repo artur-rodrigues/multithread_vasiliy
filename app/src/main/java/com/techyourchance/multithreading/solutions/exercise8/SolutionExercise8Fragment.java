@@ -12,9 +12,9 @@ import android.widget.TextView;
 
 import com.techyourchance.multithreading.DefaultConfiguration;
 import com.techyourchance.multithreading.R;
-import com.techyourchance.multithreading.common.BackgroundThreadPoster;
 import com.techyourchance.multithreading.common.BaseFragment;
-import com.techyourchance.multithreading.common.UiThreadPoster;
+import com.techyourchance.threadposter.BackgroundThreadPoster;
+import com.techyourchance.threadposter.UiThreadPoster;
 
 import java.math.BigInteger;
 

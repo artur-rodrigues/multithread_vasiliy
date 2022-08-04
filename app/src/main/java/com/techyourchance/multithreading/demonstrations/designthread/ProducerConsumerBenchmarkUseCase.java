@@ -8,7 +8,7 @@ import com.techyourchance.multithreading.common.BaseObservable;
 
 public class ProducerConsumerBenchmarkUseCase extends BaseObservable<ProducerConsumerBenchmarkUseCase.Listener> {
 
-    public static interface Listener {
+    public interface Listener {
         void onBenchmarkCompleted(Result result);
     }
 
